@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Si Pintar</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f6f9; }
+    header { background-color: #2c3e50; color: white; padding: 15px; text-align: center; }
+    nav { display: flex; justify-content: center; background-color: #34495e; }
+    nav button { background: none; border: none; color: white; padding: 14px 20px; cursor: pointer; font-size: 16px; }
+    nav button:hover, nav button.active { background-color: #1abc9c; }
+    .container { padding: 20px; max-width: 900px; margin: auto; }
+    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .hidden { display: none; }
+    label { font-weight: bold; display: block; margin-top: 10px; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; }
+    button.btn-submit { background-color: #27ae60; color: white; border: none; font-weight: bold; margin-top: 15px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #2c3e50; color: white; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>SI PINTAR - Sistem Informasi Sekolah</h1>
+</header>
+
+<nav>
+  <button id="btn-siswa" class="active" onclick="switchRole('siswa')">Siswa</button>
+  <button id="btn-guru" onclick="switchRole('guru')">Guru</button>
+  <button id="btn-walikelas" onclick="switchRole('walikelas')">Wali Kelas</button>
+</nav>
+
+<div class="container">
+
+  <!-- TAMPILAN SISWA -->
+  <div id="role-siswa" class="card">
+    <h2>Menu Siswa</h2>
+    <label>Pilih Kelas Anda:</label>
+    <select id="siswa-kelas" onchange="loadMateriSiswa()">
+      <option value="">-- Pilih Kelas --</option>
+      <option value="10A">10A</option>
+      <option value="10B">10B</option>
+      <option value="11A">11A</option>
+    </select>
+
+    <h3>Materi Ajar</h3>
+    <div id="daftar-materi">Pilih kelas untuk melihat materi.</div>
+  </div>
+
+  <!-- TAMPILAN GURU -->
+  <div id="role-guru" class="card hidden">
+    <h2>Menu Guru</h2>
+    <label>Pilih Kelas Ajar:</label>
+    <select id="guru-kelas" onchange="loadSiswaGuru()">
+      <option value="">-- Pilih Kelas --</option>
+      <option value="10A">10A</option>
+      <option value="10B">10B</option>
+      <option value="11A">11A</option>
+    </select>
+
+    <h3>Unggah Modul Materi Ajar</h3>
+    <label>Judul Materi:</label>
+    <input type="text" id="materi-judul">
+    <label>Tipe Materi:</label>
+    <select id="materi-tipe">
+      <option value="PDF">PDF</option>
+      <option value="Gambar">Gambar</option>
+      <option value="Video">Video</option>
+    </select>
+    <label>URL / Link Media (Drive/YouTube/dll):</label>
+    <input type="text" id="materi-link">
+    <button class="btn-submit" onclick="uploadMateri()">Unggah Materi</button>
+
+    <hr style="margin: 20px 0;">
+
+    <h3>Input Kehadiran Siswa</h3>
+    <label>Tanggal:</label>
+    <input type="date" id="absensi-tanggal">
+    <div id="tabel-presensi"></div>
+    <button class="btn-submit" onclick="simpanPresensi()">Simpan Presensi</button>
+  </div>
+
+  <!-- TAMPILAN WALI KELAS -->
+  <div id="role-walikelas" class="card hidden">
+    <h2>Menu Wali Kelas</h2>
+    
+    <h3>Tambah Data Siswa</h3>
+    <label>NIS:</label>
+    <input type="text" id="wk-nis">
+    <label>Nama Siswa:</label>
+    <input type="text" id="wk-nama">
+    <label>Kelas:</label>
+    <select id="wk-kelas">
+      <option value="10A">10A</option>
+      <option value="10B">10B</option>
+      <option value="11A">11A</option>
+    </select>
+    <label>Jenis Kelamin:</label>
+    <select id="wk-jk">
+      <option value="L">Laki-laki</option>
+      <option value="P">Perempuan</option>
+    </select>
+    <button class="btn-submit" onclick="tambahSiswa()">Simpan Data Siswa</button>
+
+    <hr style="margin: 20px 0;">
+
+    <h3>Rekap Kehadiran Siswa</h3>
+    <label>Filter Kelas:</label>
+    <select id="filter-wk-kelas" onchange="loadRekapKehadiran()">
+      <option value="">-- Pilih Kelas --</option>
+      <option value="10A">10A</option>
+      <option value="10B">10B</option>
+      <option value="11A">11A</option>
+    </select>
+    <button class="btn-submit" style="background-color: #3498db;" onclick="unduhRekapCSV()">Unduh Rekap (CSV)</button>
+
+    <div id="tabel-rekap-kehadiran"></div>
+  </div>
+
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxfVatxM9FwuSkjyWSZUT2eQC2Xzs6jomOSM7PnmrvAVKT9EFPVx6ngsaI8ywCDS3E/exec";
+
+  function switchRole(role) {
+    document.querySelectorAll('.card').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    
+    document.getElementById('role-' + role).classList.remove('hidden');
+    document.getElementById('btn-' + role).classList.add('active');
+  }
+
+  // --- LOGIK SISWA ---
+  function loadMateriSiswa() {
+    const kelas = document.getElementById('siswa-kelas').value;
+    if (!kelas) return;
+
+    fetch(`${SCRIPT_URL}?action=getMateri&kelas=${kelas}`)
+      .then(res => res.json())
+      .then(data => {
+        let html = '<ul>';
+        if(data.length === 0) html = '<p>Belum ada materi untuk kelas ini.</p>';
+        data.forEach(m => {
+          html += `<li><strong>[${m.tipe}]</strong> ${m.judul} - <a href="${m.link}" target="_blank">Buka Materi</a></li>`;
+        });
+        html += '</ul>';
+        document.getElementById('daftar-materi').innerHTML = html;
+      });
+  }
+
+  // --- LOGIK GURU ---
+  function uploadMateri() {
+    const kelas = document.getElementById('guru-kelas').value;
+    const judul = document.getElementById('materi-judul').value;
+    const tipe = document.getElementById('materi-tipe').value;
+    const link = document.getElementById('materi-link').value;
+
+    if (!kelas || !judul || !link) return alert('Lengkapi semua data materi.');
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'addMateri', kelas, judul, tipe, link })
+    }).then(res => res.json()).then(res => {
+      alert(res.message);
+      document.getElementById('materi-judul').value = '';
+      document.getElementById('materi-link').value = '';
+    });
+  }
+
+  let listSiswaAbsen = [];
+  function loadSiswaGuru() {
+    const kelas = document.getElementById('guru-kelas').value;
+    if (!kelas) return;
+
+    fetch(`${SCRIPT_URL}?action=getSiswa&kelas=${kelas}`)
+      .then(res => res.json())
+      .then(data => {
+        listSiswaAbsen = data;
+        let html = '<table><tr><th>NIS</th><th>Nama</th><th>Status Kehadiran</th></tr>';
+        data.forEach((s, idx) => {
+          html += `<tr>
+            <td>${s.nis}</td>
+            <td>${s.nama}</td>
+            <td>
+              <select id="absen-${idx}">
+                <option value="Hadir">Hadir</option>
+                <option value="Izin">Izin</option>
+                <option value="Sakit">Sakit</option>
+                <option value="Alfa">Alfa</option>
+              </select>
+            </td>
+          </tr>`;
+        });
+        html += '</table>';
+        document.getElementById('tabel-presensi').innerHTML = html;
+      });
+  }
+
+  function simpanPresensi() {
+    const kelas = document.getElementById('guru-kelas').value;
+    const tanggal = document.getElementById('absensi-tanggal').value;
+    if (!kelas || !tanggal) return alert('Pilih kelas dan tanggal.');
+
+    const rekap = listSiswaAbsen.map((s, idx) => ({
+      nis: s.nis,
+      nama: s.nama,
+      status: document.getElementById(`absen-${idx}`).value
+    }));
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveKehadiran', kelas, tanggal, guru: 'Guru Pengajar', kehadiran: rekap })
+    }).then(res => res.json()).then(res => {
+      alert(res.message);
+    });
+  }
+
+  // --- LOGIK WALI KELAS ---
+  function tambahSiswa() {
+    const nis = document.getElementById('wk-nis').value;
+    const nama = document.getElementById('wk-nama').value;
+    const kelas = document.getElementById('wk-kelas').value;
+    const jk = document.getElementById('wk-jk').value;
+
+    if (!nis || !nama) return alert('Isi NIS dan Nama Siswa.');
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'addSiswa', nis, nama, kelas, jk })
+    }).then(res => res.json()).then(res => {
+      alert(res.message);
+      document.getElementById('wk-nis').value = '';
+      document.getElementById('wk-nama').value = '';
+    });
+  }
+
+  let rekapDataGlobal = [];
+  function loadRekapKehadiran() {
+    const kelas = document.getElementById('filter-wk-kelas').value;
+    if (!kelas) return;
+
+    fetch(`${SCRIPT_URL}?action=getKehadiran&kelas=${kelas}`)
+      .then(res => res.json())
+      .then(data => {
+        rekapDataGlobal = data;
+        let html = '<table><tr><th>Tanggal</th><th>NIS</th><th>Nama</th><th>Status</th><th>Guru</th></tr>';
+        data.forEach(r => {
+          html += `<tr><td>${r.tanggal}</td><td>${r.nis}</td><td>${r.nama}</td><td>${r.status}</td><td>${r.guru}</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('tabel-rekap-kehadiran').innerHTML = html;
+      });
+  }
+
+  function unduhRekapCSV() {
+    if (rekapDataGlobal.length === 0) return alert('Tidak ada data untuk diunduh.');
+    let csv = 'Tanggal,Kelas,NIS,Nama,Status,Guru\n';
+    rekapDataGlobal.forEach(r => {
+      csv += `${r.tanggal},${r.kelas},${r.nis},"${r.nama}",${r.status},"${r.guru}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `Rekap_Kehadiran_${document.getElementById('filter-wk-kelas').value}.csv`);
+    a.click();
+  }
+</script>
+
+</body>
+</html>
